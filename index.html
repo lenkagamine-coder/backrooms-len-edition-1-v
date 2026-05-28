@@ -1,9 +1,9 @@
-html
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Backrooms Len Edition</title>
 
 <style>
@@ -12,7 +12,7 @@ body{
     margin:0;
     overflow:hidden;
     background:black;
-    font-family:Arial;
+    font-family:Arial, sans-serif;
 }
 
 canvas{
@@ -21,34 +21,56 @@ canvas{
 
 #hud{
     position:absolute;
-    top:10px;
-    left:10px;
+    top:15px;
+    left:15px;
+
+    background:rgba(0,0,0,0.55);
     color:white;
-    background:rgba(0,0,0,0.5);
-    padding:12px;
-    border:1px solid #ffe082;
-    border-radius:8px;
-    z-index:10;
+
+    padding:14px;
+
+    border:2px solid #f4d35e;
+    border-radius:12px;
+
+    z-index:20;
+
+    backdrop-filter:blur(4px);
+}
+
+#title{
+    font-size:28px;
+    color:#ffe082;
+    margin-bottom:8px;
 }
 
 #crosshair{
     position:absolute;
+
     top:50%;
     left:50%;
+
     width:6px;
     height:6px;
+
     background:white;
     border-radius:50%;
+
     transform:translate(-50%,-50%);
-    z-index:5;
+
+    z-index:10;
 }
 
 #vhs{
+
     position:absolute;
     inset:0;
+
     pointer-events:none;
-    mix-blend-mode:screen;
+
     opacity:0.08;
+
+    mix-blend-mode:screen;
+
     background:
     repeating-linear-gradient(
         0deg,
@@ -57,24 +79,52 @@ canvas{
         transparent 2px,
         transparent 4px
     );
+
+    z-index:5;
 }
 
 #staminaWrap{
-    width:200px;
-    height:10px;
+    width:220px;
+    height:12px;
+
     background:#222;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
     margin-top:8px;
 }
 
 #stamina{
     width:100%;
     height:100%;
+
     background:#ffe082;
+}
+
+#batteryWrap{
+    width:220px;
+    height:12px;
+
+    background:#222;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+    margin-top:8px;
+}
+
+#battery{
+    width:100%;
+    height:100%;
+
+    background:#7cff8f;
 }
 
 </style>
 
-<!-- ESTA ES LA PARTE IMPORTANTE -->
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 
 </head>
@@ -82,15 +132,30 @@ canvas{
 
 <div id="hud">
 
-BACKROOMS LEN EDITION<br>
+<div id="title">
+BACKROOMS LEN EDITION
+</div>
+
 WASD = mover<br>
 SHIFT = correr<br>
 CLICK = capturar mouse<br>
 ESC = liberar mouse<br>
 F = celular
 
+<div style="margin-top:12px;">
+STAMINA
+</div>
+
 <div id="staminaWrap">
 <div id="stamina"></div>
+</div>
+
+<div style="margin-top:10px;">
+BATERÍA
+</div>
+
+<div id="batteryWrap">
+<div id="battery"></div>
 </div>
 
 </div>
@@ -106,12 +171,16 @@ F = celular
 
 const scene = new THREE.Scene();
 
-scene.background = new THREE.Color(0x66551f);
+scene.background = new THREE.Color(0x5e4b16);
 
 scene.fog = new THREE.FogExp2(
-0x66551f,
-0.02
+0x5e4b16,
+0.018
 );
+
+// =====================================
+// CÁMARA
+// =====================================
 
 const camera = new THREE.PerspectiveCamera(
 75,
@@ -119,6 +188,10 @@ window.innerWidth/window.innerHeight,
 0.1,
 1000
 );
+
+// =====================================
+// RENDERER
+// =====================================
 
 const renderer = new THREE.WebGLRenderer({
 antialias:true
@@ -131,6 +204,9 @@ window.innerHeight
 
 renderer.shadowMap.enabled = true;
 
+renderer.shadowMap.type =
+THREE.PCFSoftShadowMap;
+
 document.body.appendChild(
 renderer.domElement
 );
@@ -139,69 +215,253 @@ renderer.domElement
 // VHS
 // =====================================
 
-const vhs = document.getElementById("vhs");
+const vhs =
+document.getElementById("vhs");
 
 setInterval(()=>{
 
 vhs.style.opacity =
-0.05 + Math.random()*0.04;
+0.05 + Math.random()*0.05;
 
-},120);
+},100);
 
 // =====================================
 // PLAYER
 // =====================================
 
 const player = {
+
 x:0,
+y:0,
 z:0,
+
 radius:1
 };
 
 // =====================================
-// LEN
+// LEN LOWPOLY N64
 // =====================================
 
 const len = new THREE.Group();
 
+// cuerpo
+
 const body = new THREE.Mesh(
 
-new THREE.BoxGeometry(1,1.5,0.6),
+new THREE.BoxGeometry(
+1.1,
+1.5,
+0.7
+),
 
 new THREE.MeshStandardMaterial({
 color:0xffffff
 })
 );
 
-body.position.y = 1.6;
+body.position.y = 1.5;
+
+body.castShadow = true;
 
 len.add(body);
 
+// cabeza
+
 const head = new THREE.Mesh(
 
-new THREE.BoxGeometry(0.9,0.9,0.9),
+new THREE.BoxGeometry(
+1,
+1,
+1
+),
 
 new THREE.MeshStandardMaterial({
-color:0xffd8b5
+color:0xffddb5
 })
 );
 
-head.position.y = 2.8;
+head.position.y = 2.7;
+
+head.castShadow = true;
 
 len.add(head);
 
-const hair = new THREE.Mesh(
+// cabello principal
 
-new THREE.BoxGeometry(1,0.5,1),
+for(let i=0;i<8;i++){
+
+const hairSpike = new THREE.Mesh(
+
+new THREE.ConeGeometry(
+0.22,
+0.7,
+4
+),
 
 new THREE.MeshStandardMaterial({
-color:0xf2cf4a
+color:0xffea00
 })
 );
 
-hair.position.y = 3.2;
+hairSpike.position.y = 3.15;
 
-len.add(hair);
+const angle =
+(i/8) * Math.PI * 2;
+
+hairSpike.position.x =
+Math.cos(angle)*0.45;
+
+hairSpike.position.z =
+Math.sin(angle)*0.45;
+
+hairSpike.rotation.z =
+Math.random()*0.6;
+
+hairSpike.rotation.x =
+Math.random()*0.6;
+
+len.add(hairSpike);
+}
+
+// flequillo
+
+for(let i=0;i<3;i++){
+
+const bang = new THREE.Mesh(
+
+new THREE.ConeGeometry(
+0.18,
+0.6,
+4
+),
+
+new THREE.MeshStandardMaterial({
+color:0xffea00
+})
+);
+
+bang.position.set(
+-0.25 + i*0.25,
+2.95,
+0.45
+);
+
+bang.rotation.x = 1.5;
+
+len.add(bang);
+}
+
+// ojos
+
+const eyeMat =
+new THREE.MeshBasicMaterial({
+color:0x68e7ff
+});
+
+const leftEye = new THREE.Mesh(
+
+new THREE.PlaneGeometry(
+0.12,
+0.12
+),
+
+eyeMat
+);
+
+leftEye.position.set(
+-0.18,
+2.72,
+0.51
+);
+
+len.add(leftEye);
+
+const rightEye = leftEye.clone();
+
+rightEye.position.x = 0.18;
+
+len.add(rightEye);
+
+// corbata
+
+const tie = new THREE.Mesh(
+
+new THREE.BoxGeometry(
+0.15,
+0.7,
+0.08
+),
+
+new THREE.MeshStandardMaterial({
+color:0xffd700
+})
+);
+
+tie.position.set(
+0,
+1.25,
+0.4
+);
+
+len.add(tie);
+
+// brazos
+
+function makeArm(side){
+
+const arm = new THREE.Mesh(
+
+new THREE.BoxGeometry(
+0.35,
+1,
+0.35
+),
+
+new THREE.MeshStandardMaterial({
+color:0x222222
+})
+);
+
+arm.position.set(
+side*0.8,
+1.45,
+0
+);
+
+return arm;
+}
+
+len.add(makeArm(-1));
+len.add(makeArm(1));
+
+// piernas
+
+function makeLeg(side){
+
+const leg = new THREE.Mesh(
+
+new THREE.BoxGeometry(
+0.4,
+1,
+0.4
+),
+
+new THREE.MeshStandardMaterial({
+color:0x2a2a2a
+})
+);
+
+leg.position.set(
+side*0.25,
+0.5,
+0
+);
+
+return leg;
+}
+
+len.add(makeLeg(-1));
+len.add(makeLeg(1));
 
 scene.add(len);
 
@@ -209,16 +469,60 @@ scene.add(len);
 // PISO
 // =====================================
 
+const floorCanvas =
+document.createElement("canvas");
+
+floorCanvas.width = 256;
+floorCanvas.height = 256;
+
+const ctx =
+floorCanvas.getContext("2d");
+
+ctx.fillStyle = "#8a6a20";
+ctx.fillRect(0,0,256,256);
+
+for(let i=0;i<12000;i++){
+
+ctx.fillStyle =
+Math.random()>0.5
+? "rgba(0,0,0,0.10)"
+: "rgba(255,255,255,0.02)";
+
+ctx.fillRect(
+Math.random()*256,
+Math.random()*256,
+1,
+1
+);
+}
+
+const floorTex =
+new THREE.CanvasTexture(floorCanvas);
+
+floorTex.wrapS =
+THREE.RepeatWrapping;
+
+floorTex.wrapT =
+THREE.RepeatWrapping;
+
+floorTex.repeat.set(140,140);
+
 const floor = new THREE.Mesh(
 
-new THREE.PlaneGeometry(4000,4000),
+new THREE.PlaneGeometry(
+5000,
+5000
+),
 
 new THREE.MeshStandardMaterial({
-color:0x7d6228
+map:floorTex
 })
 );
 
-floor.rotation.x = -Math.PI/2;
+floor.rotation.x =
+-Math.PI/2;
+
+floor.receiveShadow = true;
 
 scene.add(floor);
 
@@ -228,14 +532,19 @@ scene.add(floor);
 
 const ceiling = new THREE.Mesh(
 
-new THREE.PlaneGeometry(4000,4000),
+new THREE.PlaneGeometry(
+5000,
+5000
+),
 
 new THREE.MeshStandardMaterial({
-color:0xded7b8
+color:0xd8c88d
 })
 );
 
-ceiling.rotation.x = Math.PI/2;
+ceiling.rotation.x =
+Math.PI/2;
+
 ceiling.position.y = 6;
 
 scene.add(ceiling);
@@ -245,48 +554,45 @@ scene.add(ceiling);
 // =====================================
 
 scene.add(
+
 new THREE.AmbientLight(
 0xffffff,
 0.18
 )
+
 );
 
 const lights = [];
-
-function addLight(x,z){
-
-const light = new THREE.PointLight(
-0xfff2cc,
-1,
-18
-);
-
-light.position.set(x,5.7,z);
-
-scene.add(light);
-
-lights.push(light);
-}
 
 // =====================================
 // CHUNKS
 // =====================================
 
 const chunkSize = 60;
+
 const chunks = {};
 
-function createWall(x,y,z,w,h,d,group){
+function createWall(
+x,y,z,
+w,h,d,
+group
+){
 
 const wall = new THREE.Mesh(
 
-new THREE.BoxGeometry(w,h,d),
+new THREE.BoxGeometry(
+w,h,d
+),
 
 new THREE.MeshStandardMaterial({
-color:0xb69a4d
+color:0xb89b45
 })
 );
 
 wall.position.set(x,y,z);
+
+wall.castShadow = true;
+wall.receiveShadow = true;
 
 wall.userData = {
 w:w,
@@ -299,6 +605,10 @@ group.add(wall);
 
 return wall;
 }
+
+// =====================================
+// GENERACIÓN BACKROOMS
+// =====================================
 
 function generateChunk(cx,cz){
 
@@ -315,9 +625,9 @@ chunks[key] = group;
 const bx = cx * chunkSize;
 const bz = cz * chunkSize;
 
-// paredes
+// paredes coherentes
 
-for(let i=0;i<12;i++){
+for(let i=0;i<16;i++){
 
 const horizontal =
 Math.random()>0.5;
@@ -328,9 +638,9 @@ bx + (Math.random()-0.5)*chunkSize,
 3,
 bz + (Math.random()-0.5)*chunkSize,
 
-horizontal ? 24 : 2,
+horizontal ? 28 : 2,
 6,
-horizontal ? 2 : 24,
+horizontal ? 2 : 28,
 
 group
 );
@@ -340,14 +650,18 @@ group.userData.walls.push(wall);
 
 // columnas
 
-for(let i=0;i<4;i++){
+for(let i=0;i<6;i++){
 
 const column = new THREE.Mesh(
 
-new THREE.BoxGeometry(4,6,4),
+new THREE.BoxGeometry(
+4,
+6,
+4
+),
 
 new THREE.MeshStandardMaterial({
-color:0x9b8137
+color:0x8f762f
 })
 );
 
@@ -358,6 +672,9 @@ bx + (Math.random()-0.5)*chunkSize,
 bz + (Math.random()-0.5)*chunkSize
 
 );
+
+column.castShadow = true;
+column.receiveShadow = true;
 
 column.userData = {
 w:4,
@@ -371,21 +688,60 @@ group.add(column);
 group.userData.walls.push(column);
 }
 
-// luces
+// lámparas
 
-for(let i=0;i<3;i++){
+for(let i=0;i<4;i++){
 
-addLight(
+const x =
+bx + (Math.random()-0.5)*chunkSize;
 
-bx + (Math.random()-0.5)*chunkSize,
-bz + (Math.random()-0.5)*chunkSize
+const z =
+bz + (Math.random()-0.5)*chunkSize;
 
+const light =
+new THREE.PointLight(
+0xfff0c2,
+1.2,
+20
 );
+
+light.position.set(
+x,
+5.5,
+z
+);
+
+scene.add(light);
+
+group.add(light);
+
+lights.push(light);
+
+const lamp = new THREE.Mesh(
+
+new THREE.BoxGeometry(
+5,
+0.15,
+2
+),
+
+new THREE.MeshBasicMaterial({
+color:0xffffee
+})
+);
+
+lamp.position.copy(
+light.position
+);
+
+scene.add(lamp);
+
+group.add(lamp);
 }
 }
 
 // =====================================
-// ELIMINAR CHUNKS
+// DESCARGAR CHUNKS
 // =====================================
 
 function unloadFarChunks(px,pz){
@@ -398,10 +754,13 @@ key.split(",").map(Number);
 const dx = cx - px;
 const dz = cz - pz;
 
-if(Math.abs(dx)>2 ||
-Math.abs(dz)>2){
+if(
+Math.abs(dx)>2 ||
+Math.abs(dz)>2
+){
 
-const group = chunks[key];
+const group =
+chunks[key];
 
 group.traverse(obj=>{
 
@@ -435,20 +794,24 @@ delete chunks[key];
 
 const keys = {};
 
-window.addEventListener("keydown",e=>{
+window.addEventListener(
+"keydown",
+e=>{
 
 keys[e.key.toLowerCase()] = true;
 
 });
 
-window.addEventListener("keyup",e=>{
+window.addEventListener(
+"keyup",
+e=>{
 
 keys[e.key.toLowerCase()] = false;
 
 });
 
 // =====================================
-// MOUSE LOOK
+// POINTER LOCK
 // =====================================
 
 let yaw = 0;
@@ -466,8 +829,10 @@ window.addEventListener(
 "mousemove",
 e=>{
 
-if(document.pointerLockElement
-=== renderer.domElement){
+if(
+document.pointerLockElement
+=== renderer.domElement
+){
 
 yaw -= e.movementX * 0.002;
 
@@ -487,21 +852,36 @@ Math.min(1,pitch)
 let stamina = 100;
 
 const staminaBar =
-document.getElementById("stamina");
+document.getElementById(
+"stamina"
+);
 
 // =====================================
-// LINTERNA
+// BATERÍA
+// =====================================
+
+let battery = 100;
+
+const batteryBar =
+document.getElementById(
+"battery"
+);
+
+// =====================================
+// CELULAR
 // =====================================
 
 let flashlightOn = true;
 
 const flashlight =
 new THREE.SpotLight(
+
 0xffffff,
-2.5,
-25,
+2.7,
+28,
 Math.PI/8,
 0.4
+
 );
 
 scene.add(flashlight);
@@ -513,7 +893,8 @@ e=>{
 
 if(e.key.toLowerCase()==="f"){
 
-flashlightOn = !flashlightOn;
+flashlightOn =
+!flashlightOn;
 
 flashlight.visible =
 flashlightOn;
@@ -524,20 +905,62 @@ flashlightOn;
 // BACTERIA
 // =====================================
 
-const bacteria = new THREE.Group();
+const bacteria =
+new THREE.Group();
 
-const core = new THREE.Mesh(
+const core =
+new THREE.Mesh(
 
-new THREE.SphereGeometry(1.5,10,10),
+new THREE.SphereGeometry(
+1.6,
+10,
+10
+),
 
 new THREE.MeshStandardMaterial({
-color:0x090909
+color:0x080808
 })
 );
 
 bacteria.add(core);
 
-bacteria.position.set(25,4,25);
+// patas
+
+for(let i=0;i<8;i++){
+
+const leg =
+new THREE.Mesh(
+
+new THREE.CylinderGeometry(
+0.05,
+0.08,
+5
+),
+
+new THREE.MeshStandardMaterial({
+color:0x080808
+})
+);
+
+leg.position.set(
+
+(Math.random()-0.5)*3,
+-2,
+(Math.random()-0.5)*3
+
+);
+
+leg.rotation.z =
+Math.random()*2;
+
+bacteria.add(leg);
+}
+
+bacteria.position.set(
+20,
+4,
+20
+);
 
 scene.add(bacteria);
 
@@ -555,22 +978,27 @@ chunks[key].userData.walls;
 for(const wall of walls){
 
 const dx =
-Math.abs(x - wall.position.x);
+Math.abs(
+x - wall.position.x
+);
 
 const dz =
-Math.abs(z - wall.position.z);
+Math.abs(
+z - wall.position.z
+);
 
 const limitX =
-wall.userData.w/2 +
-player.radius;
+wall.userData.w/2
++ player.radius;
 
 const limitZ =
-wall.userData.d/2 +
-player.radius;
+wall.userData.d/2
++ player.radius;
 
-if(dx < limitX &&
-dz < limitZ){
-
+if(
+dx < limitX &&
+dz < limitZ
+){
 return true;
 }
 }
@@ -585,11 +1013,17 @@ return false;
 
 function update(){
 
+// procedural
+
 const currentChunkX =
-Math.floor(player.x/chunkSize);
+Math.floor(
+player.x/chunkSize
+);
 
 const currentChunkZ =
-Math.floor(player.z/chunkSize);
+Math.floor(
+player.z/chunkSize
+);
 
 for(let x=-1;x<=1;x++){
 
@@ -609,7 +1043,7 @@ currentChunkZ
 
 // movimiento
 
-let speed = 0.08;
+let speed = 0.09;
 
 const moving =
 
@@ -618,11 +1052,13 @@ keys["a"] ||
 keys["s"] ||
 keys["d"];
 
-if(keys["shift"] &&
+if(
+keys["shift"] &&
 stamina > 0 &&
-moving){
+moving
+){
 
-speed = 0.14;
+speed = 0.16;
 
 stamina -= 0.4;
 }
@@ -638,6 +1074,32 @@ Math.min(100,stamina)
 
 staminaBar.style.width =
 stamina + "%";
+
+// batería
+
+if(flashlightOn){
+
+battery -= 0.01;
+}
+else{
+
+battery += 0.02;
+}
+
+battery = Math.max(
+0,
+Math.min(100,battery)
+);
+
+batteryBar.style.width =
+battery + "%";
+
+if(battery <= 0){
+
+flashlight.visible = false;
+}
+
+// movimiento suave
 
 let mx = 0;
 let mz = 0;
@@ -676,20 +1138,33 @@ yaw - Math.PI/2
 )*speed;
 }
 
-const nextX = player.x + mx;
-const nextZ = player.z + mz;
+const nextX =
+player.x + mx;
 
-if(!checkCollision(nextX,player.z)){
+const nextZ =
+player.z + mz;
+
+if(
+!checkCollision(
+nextX,
+player.z
+)
+){
 
 player.x = nextX;
 }
 
-if(!checkCollision(player.x,nextZ)){
+if(
+!checkCollision(
+player.x,
+nextZ
+)
+){
 
 player.z = nextZ;
 }
 
-// personaje
+// len
 
 len.position.set(
 player.x,
@@ -699,22 +1174,35 @@ player.z
 
 len.rotation.y = yaw;
 
+// animación caminar
+
+if(moving){
+
+len.position.y =
+Math.sin(Date.now()*0.01)*0.08;
+}
+
 // cámara
 
 const camX =
-player.x - Math.sin(yaw)*5;
+player.x -
+Math.sin(yaw)*5;
 
 const camZ =
-player.z - Math.cos(yaw)*5;
+player.z -
+Math.cos(yaw)*5;
 
 camera.position.x +=
-(camX - camera.position.x)*0.08;
+(camX-camera.position.x)
+*0.08;
 
 camera.position.z +=
-(camZ - camera.position.z)*0.08;
+(camZ-camera.position.z)
+*0.08;
 
 camera.position.y +=
-(3 - camera.position.y)*0.08;
+(3-camera.position.y)
+*0.08;
 
 camera.lookAt(
 player.x,
@@ -733,15 +1221,18 @@ flashlight.target.position.set(
 player.x + Math.sin(yaw)*10,
 2,
 player.z + Math.cos(yaw)*10
+
 );
 
 // bacteria
 
 const dx =
-player.x - bacteria.position.x;
+player.x -
+bacteria.position.x;
 
 const dz =
-player.z - bacteria.position.z;
+player.z -
+bacteria.position.z;
 
 const dist =
 Math.sqrt(dx*dx + dz*dz);
@@ -754,20 +1245,25 @@ player.x,
 player.z
 );
 
-if(dist > 8){
+if(dist > 10){
 
 bacteria.position.x +=
-dx*0.0025;
+dx*0.002;
 
 bacteria.position.z +=
-dz*0.0025;
+dz*0.002;
 }
 
-if(dist < 15){
+if(dist < 18){
 
 vhs.style.opacity =
-0.15 + Math.random()*0.15;
+0.18 + Math.random()*0.15;
 }
+}
+else{
+
+vhs.style.opacity =
+0.05 + Math.random()*0.05;
 }
 
 // luces
@@ -777,12 +1273,12 @@ for(const l of lights){
 if(Math.random()<0.0015){
 
 l.intensity =
-Math.random()*0.4;
+Math.random()*0.5;
 }
 else{
 
 l.intensity +=
-(0.9 - l.intensity)*0.03;
+(1-l.intensity)*0.03;
 }
 }
 }
@@ -793,7 +1289,9 @@ l.intensity +=
 
 function animate(){
 
-requestAnimationFrame(animate);
+requestAnimationFrame(
+animate
+);
 
 update();
 
