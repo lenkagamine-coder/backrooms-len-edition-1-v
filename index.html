@@ -1,0 +1,669 @@
+# BACKROOMS LEN EDITION ULTIMATE 😭🔥
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backrooms Ultimate</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
+    font-family:Arial;
+}
+
+canvas{
+    display:block;
+}
+
+#hud{
+    position:absolute;
+    top:10px;
+    left:10px;
+    color:white;
+    background:rgba(0,0,0,0.5);
+    padding:12px;
+    border:1px solid #ffe082;
+    border-radius:8px;
+    z-index:10;
+}
+
+#crosshair{
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:6px;
+    height:6px;
+    background:white;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    z-index:5;
+}
+
+#vhs{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    mix-blend-mode:screen;
+    opacity:0.08;
+    background:
+    repeating-linear-gradient(
+        0deg,
+        rgba(255,255,255,0.03) 0px,
+        rgba(255,255,255,0.03) 2px,
+        transparent 2px,
+        transparent 4px
+    );
+}
+
+#staminaWrap{
+    width:200px;
+    height:10px;
+    background:#222;
+    margin-top:8px;
+}
+
+#stamina{
+    width:100%;
+    height:100%;
+    background:#ffe082;
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<div id="hud">
+BACKROOMS LEN EDITION<br>
+WASD = mover<br>
+SHIFT = correr<br>
+CLICK = capturar mouse<br>
+ESC = liberar mouse<br>
+F = celular
+
+<div id="staminaWrap">
+<div id="stamina"></div>
+</div>
+</div>
+
+<div id="crosshair"></div>
+<div id="vhs"></div>
+
+<script>
+
+// =====================================
+// ESCENA
+// =====================================
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x66551f);
+scene.fog = new THREE.FogExp2(0x66551f,0.018);
+
+const camera = new THREE.PerspectiveCamera(
+75,
+window.innerWidth/window.innerHeight,
+0.1,
+1000
+);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias:true
+});
+
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// =====================================
+// VHS
+// =====================================
+
+const vhs = document.getElementById("vhs");
+
+setInterval(()=>{
+    vhs.style.opacity = 0.06 + Math.random()*0.05;
+},120);
+
+// =====================================
+// PLAYER
+// =====================================
+
+const player = {
+    x:0,
+    y:2,
+    z:0,
+    velY:0
+};
+
+// =====================================
+// LEN LOWPOLY
+// =====================================
+
+const len = new THREE.Group();
+
+const body = new THREE.Mesh(
+    new THREE.BoxGeometry(1,1.5,0.6),
+    new THREE.MeshStandardMaterial({color:0xffffff})
+);
+body.position.y = 1.6;
+len.add(body);
+
+const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.9,0.9,0.9),
+    new THREE.MeshStandardMaterial({color:0xffd8b5})
+);
+head.position.y = 2.8;
+len.add(head);
+
+const hair = new THREE.Mesh(
+    new THREE.BoxGeometry(1,0.5,1),
+    new THREE.MeshStandardMaterial({color:0xf2cf4a})
+);
+hair.position.y = 3.2;
+len.add(hair);
+
+const tie = new THREE.Mesh(
+    new THREE.BoxGeometry(0.15,0.8,0.1),
+    new THREE.MeshStandardMaterial({color:0xffd83d})
+);
+tie.position.set(0,1.4,0.31);
+len.add(tie);
+
+scene.add(len);
+
+// =====================================
+// PISO
+// =====================================
+
+const floorCanvas = document.createElement("canvas");
+floorCanvas.width = 128;
+floorCanvas.height = 128;
+
+const fctx = floorCanvas.getContext("2d");
+
+fctx.fillStyle = "#7d6228";
+fctx.fillRect(0,0,128,128);
+
+for(let i=0;i<4000;i++){
+
+    fctx.fillStyle = Math.random()>0.5
+    ? "rgba(0,0,0,0.15)"
+    : "rgba(255,255,255,0.02)";
+
+    fctx.fillRect(
+        Math.random()*128,
+        Math.random()*128,
+        1,
+        1
+    );
+}
+
+const floorTex = new THREE.CanvasTexture(floorCanvas);
+floorTex.wrapS = THREE.RepeatWrapping;
+floorTex.wrapT = THREE.RepeatWrapping;
+floorTex.repeat.set(100,100);
+
+const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(3000,3000),
+    new THREE.MeshStandardMaterial({
+        map:floorTex,
+        roughness:1
+    })
+);
+
+floor.rotation.x = -Math.PI/2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// =====================================
+// TECHO
+// =====================================
+
+const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(3000,3000),
+    new THREE.MeshStandardMaterial({
+        color:0xded7b8
+    })
+);
+
+ceiling.rotation.x = Math.PI/2;
+ceiling.position.y = 6;
+scene.add(ceiling);
+
+// =====================================
+// LUCES
+// =====================================
+
+scene.add(new THREE.AmbientLight(0xffffff,0.18));
+
+const lights = [];
+
+function addLight(x,z){
+
+    const light = new THREE.PointLight(
+        0xfff2cc,
+        1,
+        20
+    );
+
+    light.position.set(x,5.7,z);
+    light.castShadow = true;
+
+    scene.add(light);
+    lights.push(light);
+
+    const lamp = new THREE.Mesh(
+        new THREE.BoxGeometry(5,0.1,2),
+        new THREE.MeshBasicMaterial({
+            color:0xffffee
+        })
+    );
+
+    lamp.position.copy(light.position);
+    scene.add(lamp);
+}
+
+// =====================================
+// PROCEDURAL CHUNKS
+// =====================================
+
+const chunkSize = 60;
+const chunks = {};
+const walls = [];
+
+function createWall(x,y,z,w,h,d){
+
+    const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(w,h,d),
+        new THREE.MeshStandardMaterial({
+            color:0xb69a4d
+        })
+    );
+
+    mesh.position.set(x,y,z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    scene.add(mesh);
+    walls.push(mesh);
+
+    return mesh;
+}
+
+function generateChunk(cx,cz){
+
+    const key = `${cx},${cz}`;
+
+    if(chunks[key]) return;
+
+    const group = new THREE.Group();
+    chunks[key] = group;
+
+    const bx = cx * chunkSize;
+    const bz = cz * chunkSize;
+
+    // paredes
+
+    for(let i=0;i<10;i++){
+
+        const horizontal = Math.random()>0.5;
+
+        const wall = createWall(
+            bx + (Math.random()-0.5)*chunkSize,
+            3,
+            bz + (Math.random()-0.5)*chunkSize,
+            horizontal ? 18 : 2,
+            6,
+            horizontal ? 2 : 18
+        );
+
+        group.add(wall);
+    }
+
+    // columnas
+
+    for(let i=0;i<5;i++){
+
+        const column = new THREE.Mesh(
+            new THREE.BoxGeometry(4,6,4),
+            new THREE.MeshStandardMaterial({
+                color:0x9d8136
+            })
+        );
+
+        column.position.set(
+            bx + (Math.random()-0.5)*chunkSize,
+            3,
+            bz + (Math.random()-0.5)*chunkSize
+        );
+
+        scene.add(column);
+        group.add(column);
+    }
+
+    // puertas
+
+    for(let i=0;i<2;i++){
+
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(4,5,0.3),
+            new THREE.MeshStandardMaterial({
+                color:0x5a3514
+            })
+        );
+
+        door.position.set(
+            bx + (Math.random()-0.5)*chunkSize,
+            2.5,
+            bz + (Math.random()-0.5)*chunkSize
+        );
+
+        scene.add(door);
+        group.add(door);
+    }
+
+    // luces
+
+    for(let i=0;i<4;i++){
+
+        addLight(
+            bx + (Math.random()-0.5)*chunkSize,
+            bz + (Math.random()-0.5)*chunkSize
+        );
+    }
+}
+
+function unloadFarChunks(px,pz){
+
+    for(const key in chunks){
+
+        const [cx,cz] = key.split(",").map(Number);
+
+        const dx = cx - px;
+        const dz = cz - pz;
+
+        if(Math.abs(dx)>2 || Math.abs(dz)>2){
+
+            scene.remove(chunks[key]);
+            delete chunks[key];
+        }
+    }
+}
+
+// =====================================
+// CONTROLES
+// =====================================
+
+const keys = {};
+
+window.addEventListener("keydown",e=>{
+    keys[e.key.toLowerCase()] = true;
+});
+
+window.addEventListener("keyup",e=>{
+    keys[e.key.toLowerCase()] = false;
+});
+
+// =====================================
+// MOUSE LOOK REAL
+// =====================================
+
+let yaw = 0;
+let pitch = 0;
+
+renderer.domElement.addEventListener("click",()=>{
+    renderer.domElement.requestPointerLock();
+});
+
+window.addEventListener("mousemove",e=>{
+
+    if(document.pointerLockElement === renderer.domElement){
+
+        yaw -= e.movementX * 0.002;
+        pitch -= e.movementY * 0.002;
+
+        pitch = Math.max(-1.2,Math.min(1.2,pitch));
+    }
+});
+
+// =====================================
+// STAMINA
+// =====================================
+
+let stamina = 100;
+const staminaBar = document.getElementById("stamina");
+
+// =====================================
+// CELULAR
+// =====================================
+
+let flashlightOn = true;
+
+const flashlight = new THREE.SpotLight(
+    0xffffff,
+    3,
+    30,
+    Math.PI/8,
+    0.4
+);
+
+scene.add(flashlight);
+scene.add(flashlight.target);
+
+window.addEventListener("keydown",e=>{
+
+    if(e.key.toLowerCase()==="f"){
+
+        flashlightOn = !flashlightOn;
+        flashlight.visible = flashlightOn;
+    }
+});
+
+// =====================================
+// BACTERIA
+// =====================================
+
+const bacteria = new THREE.Group();
+
+const core = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5,8,8),
+    new THREE.MeshStandardMaterial({
+        color:0x111111
+    })
+);
+
+bacteria.add(core);
+
+for(let i=0;i<8;i++){
+
+    const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05,0.08,5),
+        new THREE.MeshStandardMaterial({
+            color:0x111111
+        })
+    );
+
+    leg.position.set(
+        (Math.random()-0.5)*2,
+        -2,
+        (Math.random()-0.5)*2
+    );
+
+    leg.rotation.z = Math.random()*2;
+
+    bacteria.add(leg);
+}
+
+bacteria.position.set(20,4,20);
+scene.add(bacteria);
+
+// =====================================
+// UPDATE
+// =====================================
+
+function update(){
+
+    // procedural optimizado
+
+    const currentChunkX = Math.floor(player.x / chunkSize);
+    const currentChunkZ = Math.floor(player.z / chunkSize);
+
+    for(let x=-1;x<=1;x++){
+        for(let z=-1;z<=1;z++){
+            generateChunk(
+                currentChunkX + x,
+                currentChunkZ + z
+            );
+        }
+    }
+
+    unloadFarChunks(currentChunkX,currentChunkZ);
+
+    // movimiento
+
+    let speed = 0.08;
+
+    const moving =
+    keys["w"] ||
+    keys["a"] ||
+    keys["s"] ||
+    keys["d"];
+
+    if(keys["shift"] && stamina > 0){
+        speed = 0.14;
+        stamina -= 0.5;
+    }
+    else{
+        stamina += 0.3;
+    }
+
+    stamina = Math.max(0,Math.min(100,stamina));
+    staminaBar.style.width = stamina + "%";
+
+    let mx = 0;
+    let mz = 0;
+
+    if(keys["w"]){
+        mx += Math.sin(yaw) * speed;
+        mz += Math.cos(yaw) * speed;
+    }
+
+    if(keys["s"]){
+        mx -= Math.sin(yaw) * speed;
+        mz -= Math.cos(yaw) * speed;
+    }
+
+    if(keys["a"]){
+        mx += Math.sin(yaw + Math.PI/2) * speed;
+        mz += Math.cos(yaw + Math.PI/2) * speed;
+    }
+
+    if(keys["d"]){
+        mx += Math.sin(yaw - Math.PI/2) * speed;
+        mz += Math.cos(yaw - Math.PI/2) * speed;
+    }
+
+    player.x += mx;
+    player.z += mz;
+
+    len.position.set(player.x,0,player.z);
+    len.rotation.y = yaw;
+
+    // cámara suave
+
+    const targetX = player.x - Math.sin(yaw)*5;
+    const targetZ = player.z - Math.cos(yaw)*5;
+    const targetY = 3 + Math.sin(Date.now()*0.01)*0.02;
+
+    camera.position.x += (targetX - camera.position.x)*0.08;
+    camera.position.z += (targetZ - camera.position.z)*0.08;
+    camera.position.y += (targetY - camera.position.y)*0.08;
+
+    camera.lookAt(
+        player.x,
+        2 + pitch,
+        player.z
+    );
+
+    // celular
+
+    flashlight.position.copy(camera.position);
+
+    flashlight.target.position.set(
+        player.x + Math.sin(yaw)*10,
+        2,
+        player.z + Math.cos(yaw)*10
+    );
+
+    // bacteria
+
+    const dx = player.x - bacteria.position.x;
+    const dz = player.z - bacteria.position.z;
+
+    const dist = Math.sqrt(dx*dx + dz*dz);
+
+    if(dist < 40){
+
+        bacteria.lookAt(player.x,4,player.z);
+
+        if(dist > 8){
+            bacteria.position.x += dx*0.003;
+            bacteria.position.z += dz*0.003;
+        }
+
+        if(dist < 15){
+            vhs.style.opacity = 0.18 + Math.random()*0.15;
+        }
+    }
+
+    // luces VHS
+
+    for(const l of lights){
+
+        if(Math.random()<0.002){
+            l.intensity = Math.random()*0.5;
+        }
+        else{
+            l.intensity += (1 - l.intensity)*0.03;
+        }
+    }
+}
+
+// =====================================
+// LOOP
+// =====================================
+
+function animate(){
+
+    requestAnimationFrame(animate);
+
+    update();
+    renderer.render(scene,camera);
+}
+
+animate();
+
+// =====================================
+// RESIZE
+// =====================================
+
+window.addEventListener("resize",()=>{
+
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+});
+
+</script>
+</body>
+</html>
+```
